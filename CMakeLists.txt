@@ -1,8 +1,8 @@
 cmake_minimum_required(VERSION 3.21)
 
 project(
-	SamplePlugin
-	VERSION 0.7.5
+	CustomConsoleCommands
+	VERSION 0.1.0
 	LANGUAGES CXX
 )
 
@@ -30,6 +30,7 @@ include(XSEPlugin)
 find_package(magic_enum CONFIG REQUIRED)
 find_package(xbyak CONFIG REQUIRED)
 find_package(nlohmann_json CONFIG REQUIRED)
+find_package(yaml-cpp CONFIG REQUIRED)
 find_path(CLIB_UTIL_INCLUDE_DIRS "ClibUtil/utils.hpp")
 
 target_include_directories(
@@ -43,6 +44,7 @@ target_link_libraries(
 	PRIVATE
 	magic_enum::magic_enum
 	xbyak::xbyak
+	yaml-cpp::yaml-cpp
 	nlohmann_json::nlohmann_json
 )
 

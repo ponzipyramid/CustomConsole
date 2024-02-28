@@ -101,8 +101,24 @@ namespace util
 #include <nlohmann/json.hpp>
 using json = nlohmann::json;
 
+#include "yaml-cpp/yaml.h"
+
 #include <magic_enum.hpp>
+
 
 #include "SimpleMath.h"
 
 using uint = uint32_t;
+
+namespace stl
+{
+	using namespace SKSE::stl;
+
+	[[nodiscard]] constexpr std::string_view safe_string(const char* a_str) noexcept
+	{
+		return a_str ? a_str : "";
+	}
+}
+
+#define DLLEXPORT __declspec(dllexport)
+
