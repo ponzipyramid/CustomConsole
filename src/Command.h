@@ -2,7 +2,7 @@
 
 namespace C3
 {
-	struct ArgValue
+	struct Arg
 	{
 		enum Type
 		{
@@ -17,57 +17,84 @@ namespace C3
 			None
 		};
 
-		int intVal;
-		bool bVal;
-		float fltVal;
-		std::string strVal;
-		RE::TESForm* formVal;
-		RE::Actor* actorVal;
-		RE::TESObjectREFR* objectRefVal;
-		RE::TESObjectARMO* armVal;
-		Type type;
-	};
-
-	struct Arg
-	{
-		enum Action
-		{
-			StoreTrue
-		};
-
-		ArgValue& CreateValue(std::string_view a_val)
-		{
-			ArgValue val;
-
-			val.type = type;
-			val.strVal = std::string{ a_val };
-
-			return val;
-		}
-
 		std::string name;
-		std::string flag;
+		std::string help;
+		std::vector<std::string> aliases;
+		Type type;		
 		bool selected = false;
-		ArgValue::Type type;
-		Action action;
+		bool flag = false;
+		bool required = false;
 	};
 
 	struct SubCommand
 	{
-
-		inline Arg* GetArg(std::string_view a_str) { return argsByFlag[a_str]; }
 		std::string name;
-		std::string flag;
+		std::string func;
+		std::string help;
+		std::string alias;
 		std::vector<Arg> args;
-		std::unordered_map<std::string_view, Arg*> argsByFlag;
 	};
 
 	struct Command
 	{
-		inline SubCommand* GetSub(std::string_view a_str) { return subs.count(a_str) ? &subs[a_str] : nullptr; }
 		std::string name;
-		std::string flag;
+		std::string help;
+		std::string alias;
 		std::string script;
-		std::unordered_map<std::string_view, SubCommand> subs;
+		std::vector<SubCommand> subs;
+	};
+}
+
+namespace YAML
+{
+	template <>
+	struct convert<C3::Arg>
+	{
+		static bool decode(const Node& node, C3::Arg& rhs)
+		{
+			rhs.name = node["name"].as<std::string>("");
+			rhs.help = node["help"].as<std::string>("");
+			rhs.aliases = node["aliases"].as<std::vector<std::string>>(std::vector<std::string>{});
+			rhs.selected = node["selected"].as<boolean>(false);
+			rhs.flag = node["flag"].as<boolean>(false);
+			rhs.required = node["required"].as<boolean>(false);
+
+			auto type = node["type"].as<std::string>("");
+			rhs.type = magic_enum::enum_cast<C3::Arg::Type>(type, magic_enum::case_insensitive).value_or(C3::Arg::Type::None);
+
+			return !rhs.name.empty() && rhs.type != C3::Arg::Type::None;
+		}
+	};
+
+	template <>
+	struct convert<C3::SubCommand>
+	{
+		static bool decode(const Node& node, C3::SubCommand& rhs)
+		{
+			rhs.name = node["name"].as<std::string>("");
+			rhs.help = node["help"].as<std::string>("");
+			rhs.alias = node["alias"].as<std::string>("");
+			rhs.func = node["func"].as<std::string>("");
+			
+			rhs.args = node["args"].as<std::vector<C3::Arg>>(std::vector<C3::Arg>{});
+
+			return !rhs.name.empty() && !rhs.func.empty();
+		}
+	};
+
+	template <>
+	struct convert<C3::Command>
+	{
+		static bool decode(const Node& node, C3::Command& rhs)
+		{
+			rhs.name = node["name"].as<std::string>("");
+			rhs.help = node["help"].as<std::string>("");
+			rhs.alias = node["alias"].as<std::string>("");
+			rhs.script = node["script"].as<std::string>("");
+
+			rhs.subs = node["subs"].as<std::vector<C3::SubCommand>>(std::vector<C3::SubCommand>{});
+
+			return !rhs.name.empty() && !rhs.script.empty();
+		}
 	};
 }

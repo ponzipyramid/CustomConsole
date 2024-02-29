@@ -1,16 +1,51 @@
 #include "Commands.h"
+#include "Util.h"
 
 using namespace C3;
+namespace fs = std::filesystem;
 
 void Commands::Load()
 {
 	// TODO: parse config files
+	std::string dir{ "Data/SKSE/ConsoleExtender" };
+
+	for (const auto& entry : fs::directory_iterator(dir)) {
+		if (entry.is_directory())
+			continue;
+
+		auto path = entry.path();
+		if (path.extension() == ".yaml" || path.extension() == ".yaml") {
+			try {
+				YAML::Node node = YAML::LoadFile(path.string());
+				auto command = node.as<Command>();
+				logger::info("registering command {} {} w/ {} subcommands", command.name, command.alias, command.subs.size());
+
+				if (_commands.count(command.name)) {
+					logger::error("{} already registered as a command - skipping", command.name);
+					continue;
+				}
+				else
+					_commands[command.name] = command;
+				
+				if (_commands.count(command.alias))
+					logger::error("{} command alias already registered as a command - skipping", command.alias);
+				else
+					_commands[command.alias] = command;
+
+				logger::info("registered command {}", command.name);
+
+			} catch (std::exception& e) {
+				logger::error("failed to create command from file: {} due to {}", path.string(), e.what());
+			} catch (...) {
+				logger::error("failed to create command from file: {}", path.string());
+			}
+		}
+	}
+
 }
 
 bool Commands::Parse(const std::string& a_command, RE::TESObjectREFR* a_ref)
 {
-	// yes, i indeed have no idea how to write a good parser
-
 	auto formId = a_ref ? a_ref->GetFormID() : 0;
 
 	logger::info("command registered = {}, target = {}", a_command, formId);
@@ -27,82 +62,9 @@ bool Commands::Parse(const std::string& a_command, RE::TESObjectREFR* a_ref)
 	if (tokens.size() < 2)
 		return false;
 
-	if (auto cmd = GetCmd(tokens[0]))
-	{
-		if (auto sub = cmd->GetSub(tokens[1]))
-		{
+	if (auto cmd = GetCmd(tokens[0])) {
 
-			// parse arguments
-
-			// todo: check selected argument
-			
-			std::vector<std::pair<Arg*, std::string_view>> matches;
-			std::vector<std::string> invalid;
-
-			for (int i = 3; i < tokens.size(); i++)
-			{
-				if (!invalid.empty())
-					break;
-
-				token = tokens[i];
-				if (token.starts_with("-") || token.starts_with("--"))
-				{
-					// named argument
-					if (auto arg = sub->GetArg(token))
-					{
-						if (arg->action == Arg::Action::StoreTrue)
-						{
-							matches.push_back({ arg, "true" });
-						}
-						else
-						{
-							std::string val;
-							if ((i + 1) < tokens.size())
-							{
-								val = tokens[i];
-							}
-							matches.push_back({ arg, val });
-
-							i++;
-						}
-					} 
-					else
-					{
-						invalid.push_back(token);
-					}
-				}
-				else
-				{
-					if (matches.size() > sub->args.size()) {
-						invalid.push_back(token);
-					}
-					else
-					{
-						matches.push_back({ &sub->args[i - 3], token });
-					}
-				}
-
-			}
-
-			if (invalid.empty())
-			{
-				// parse values and check types
-			}
-			else
-			{
-				std::string err{ "unrecognized arguments: " };
-				for (auto& arg : invalid)
-				{
-					err += arg;
-					err += " ";
-				}
-				PrintErr(cmd, sub, err);
-			}
-		}
-		else
-		{
-			PrintErr(cmd, std::format("unrecognized subcommand {}", tokens[1]));
-		}
+		Print(std::format("command {}, recognized", cmd->name));
 
 		return true;
 	}
@@ -124,11 +86,5 @@ void Commands::Print(const std::string& a_str)
 
 void Commands::PrintErr(Command* a_cmd, std::string a_str)
 {
-	Print(std::format("ERROR {}: {}.\nUse help for usage information.", a_cmd->name, a_str));
-}
-
-void Commands::PrintErr(Command* a_cmd, SubCommand* a_sub, std::string a_str)
-{
-	auto cmb = std::format("{} {}", a_cmd->name, a_sub->name);
-	Print(std::format("ERROR {}: {}.\nUse {} help for usage information.", cmb, a_str, cmb));
+	Print(std::format("ERROR {}: {}.", a_cmd->name, a_str));
 }

@@ -1,4 +1,5 @@
 #include "Hooks.h"
+#include "Commands.h"
 
 using namespace C3;
 
@@ -33,6 +34,7 @@ extern "C" DLLEXPORT bool SKSEAPI SKSEPlugin_Load(const SKSE::LoadInterface* a_s
 	SKSE::Init(a_skse);
 
 	Hooks::Install();
+	Commands::Load();
 
 	return true;
 }
