@@ -87,11 +87,13 @@ namespace YAML
 			rhs.help = node["help"].as<std::string>("");
 			rhs.defaultVal = node["default"].as<std::string>("");
 			rhs.alias = node["aliases"].as<std::string>("");
-			rhs.selected = node["selected"].as<boolean>(false);
-			rhs.flag = node["flag"].as<boolean>(false);
-			rhs.required = node["required"].as<boolean>(false);
+			rhs.selected = node["selected"].as<std::string>("false") == "true";
+			rhs.flag = node["flag"].as<std::string>("false") == "true";
+			rhs.required = node["required"].as<std::string>("false") == "true";
 
 			rhs.positional = !rhs.name.starts_with("-");
+
+			logger::info("{} is positional {} {}", rhs.name, rhs.positional, rhs.flag);
 
 			rhs.rawType = node["type"].as<std::string>("");
 			rhs.type = magic_enum::enum_cast<C3::Arg::Type>(rhs.rawType, magic_enum::case_insensitive).value_or(C3::Arg::Type::Object);
@@ -119,6 +121,7 @@ namespace YAML
 					rhs.flags[arg.name] = i;
 					if (!rhs.alias.empty())
 						rhs.flags[arg.alias] = i;
+					logger::info("assigning flag {} to {}", arg.name, i);
 				}
 
 				logger::info("assigning {} to {}", arg.name, i);

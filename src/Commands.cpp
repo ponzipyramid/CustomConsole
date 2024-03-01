@@ -76,26 +76,32 @@ bool Commands::Parse(const std::string& a_command, RE::TESObjectREFR* a_ref)
 		if (auto sub = cmd->GetSub(tokens[1])) {
 			logger::info("subcommand {} recognized", sub->name);
 
-			std::unordered_map<std::string_view, std::string> flags;
+			std::unordered_map<std::string, std::string> flags;
 			std::vector<std::string> positional;
+			std::string unrecognized;
 			std::string invalid;
 
 			// TODO: add support for --flag=value pattern
 			for (int i = 2; i < tokens.size(); i++) {
-				const auto& token = tokens[i];
+				const auto token = tokens[i];
 
 				if (token.starts_with("-") || token.starts_with("--")) {
 					if (auto arg = sub->GetFlag(token)) {
+						logger::info("{} is a flag argument {}", arg->name, arg->flag);
 						if (arg->flag) {
+							logger::info("treating {} as flag setting to true", arg->name);
 							flags[arg->name] = "true";
+						} else if ((i + 1) < tokens.size() && !tokens[i + 1].starts_with("--") && !tokens[i + 1].starts_with("-")) {
+							logger::info("treating {} as flag value - setting to {}", arg->name, tokens[i + 1]);
+							flags[arg->name] = tokens[i + 1];
 						} else {
-							if ((i + 1) < tokens.size() && !tokens[i + 1].starts_with("--") && !tokens[i + 1].starts_with("-")) {
-								flags[arg->name] = tokens[i + 1];
-							}
+							logger::info("treating {} as flag value did not have value but expected one", token);
+							invalid += arg->name;
+							invalid += " ";
 						}
 					} else {
-						invalid += token;
-						invalid += " ";
+						unrecognized += token;
+						unrecognized += " ";
 					}
 				} else {
 					logger::info("adding {} to positional", token);
@@ -103,8 +109,15 @@ bool Commands::Parse(const std::string& a_command, RE::TESObjectREFR* a_ref)
 				}
 			}
 
+			if (!unrecognized.empty()) {
+				PrintErr(cmd, std::format("unrecognized flag arguments: {}", unrecognized));
+			}
+
 			if (!invalid.empty()) {
-				PrintErr(cmd, std::format("unrecognized flag arguments: {}", invalid));
+				PrintErr(cmd, std::format("invalid flag arguments - was expecting value: {}", invalid));
+			}
+
+			if (!unrecognized.empty() || !invalid.empty()) {
 				return true;
 			}
 
@@ -113,14 +126,8 @@ bool Commands::Parse(const std::string& a_command, RE::TESObjectREFR* a_ref)
 
 			std::string missing;
 
-			logger::info("Keys: {}", sub->all.size());
-			for (auto& [key, _] : sub->all) {
-				logger::info("key: |{}|", key);
-			}
-
 			int pos = 0;
 			for (const auto& arg : sub->args) {
-				logger::info("{} index found |{}|", arg.name, sub->all.count(arg.name));
 				int index = sub->all[arg.name];
 
 				if (arg.positional) {
@@ -134,10 +141,13 @@ bool Commands::Parse(const std::string& a_command, RE::TESObjectREFR* a_ref)
 					}
 				} else {
 					if (flags.count(arg.name)) {
+						logger::info("found {} value in map", arg.name);
 						values[index] = flags[arg.name];
 					} else if (!arg.required) {
+						logger::info("using {} default value", arg.name);
 						values[index] = Util::GetDefault(arg.type);
 					} else {
+						logger::info("{} is required with no value provided", arg.name);
 						missing += arg.name;
 						missing += " ";
 					}
