@@ -11,6 +11,7 @@ namespace C3
 		static bool Parse(const std::string& a_command, RE::TESObjectREFR* a_ref);
 	private:
 		static void Print(const std::string& a_str);
+		static void PrintErr(std::string a_str);
 		static void PrintErr(Command* a_cmd, std::string a_str);
 		static inline Command* GetCmd(std::string a_str) { return _commands.count(a_str) ? &_commands[a_str] : nullptr; }
 

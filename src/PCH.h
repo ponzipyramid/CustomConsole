@@ -105,8 +105,6 @@ using json = nlohmann::json;
 
 #include <magic_enum.hpp>
 
-#include "args.hxx"
-
 #include "SimpleMath.h"
 
 using uint = uint32_t;

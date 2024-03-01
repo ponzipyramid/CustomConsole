@@ -6,9 +6,9 @@ using namespace C3;
 void Hooks::CompileAndRun(RE::Script* a_script, RE::ScriptCompiler* a_compiler, RE::COMPILER_NAME a_name, RE::TESObjectREFR* a_targetRef)
 {
 	auto cmd = a_script->GetCommand();
-	if (!Commands::Parse(cmd, a_targetRef)) {
-		_CompileAndRun(a_script, a_compiler, a_name, a_targetRef);
-	}
+	if (Commands::Parse(cmd, a_targetRef))
+		return;
+	_CompileAndRun(a_script, a_compiler, a_name, a_targetRef);
 }
 
 
