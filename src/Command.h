@@ -86,7 +86,7 @@ namespace YAML
 			rhs.name = node["name"].as<std::string>("");
 			rhs.help = node["help"].as<std::string>("");
 			rhs.defaultVal = node["default"].as<std::string>("");
-			rhs.alias = node["aliases"].as<std::string>("");
+			rhs.alias = node["alias"].as<std::string>("");
 			rhs.selected = node["selected"].as<std::string>("false") == "true";
 			rhs.flag = node["flag"].as<std::string>("false") == "true";
 			rhs.required = node["required"].as<std::string>("false") == "true";

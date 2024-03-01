@@ -82,10 +82,11 @@ bool Commands::Parse(const std::string& a_command, RE::TESObjectREFR* a_ref)
 			std::string invalid;
 
 			// TODO: add support for --flag=value pattern
+			// TODO: add support for arrays
 			for (int i = 2; i < tokens.size(); i++) {
 				const auto token = tokens[i];
 
-				if (token.starts_with("-") || token.starts_with("--")) {
+				if (token.starts_with("-")) {
 					if (auto arg = sub->GetFlag(token)) {
 						logger::info("{} is a flag argument {}", arg->name, arg->flag);
 						if (arg->flag) {
@@ -100,6 +101,7 @@ bool Commands::Parse(const std::string& a_command, RE::TESObjectREFR* a_ref)
 							invalid += " ";
 						}
 					} else {
+						logger::info("{} is an unrecognized flag", token);
 						unrecognized += token;
 						unrecognized += " ";
 					}
@@ -160,9 +162,36 @@ bool Commands::Parse(const std::string& a_command, RE::TESObjectREFR* a_ref)
 			}		
 			
 			auto onResult = [](const RE::BSScript::Variable& a_var) {
+				using RawType = RE::BSScript::TypeInfo::RawType;
+
 				logger::info("received callback value = {}", a_var.GetString());
 				// TODO: check return type and format appropriately w/ user-supplied template if available
-				Print(std::string{a_var.GetString()});
+
+				std::string ret;
+				
+				// TODO: implement arrays
+				switch (a_var.GetType().GetRawType())
+				{
+				case RawType::kNone:
+					ret = "none";
+					break;
+				case RawType::kObject:
+					// TODO: implement
+					break;
+				case RawType::kString:
+					ret = std::string{ a_var.GetString() };
+					break;
+				case RawType::kInt:
+					ret = std::to_string(a_var.GetSInt());
+					break;
+				case RawType::kFloat:
+					ret = std::to_string(a_var.GetFloat());
+					break;
+				case RawType::kBool:
+					ret = Util::BoolToString(a_var.GetBool());
+					break;
+				}
+				Print(ret);
 			};
 
 			Util::InvokeFuncWithArgs(cmd->script, sub->func, sub->args, values, onResult);
