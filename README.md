@@ -1,4 +1,4 @@
-# Console Extender
+# Custom Console
 
 SKSE plugin that allows creation of new console commands using Papyrus.
 
