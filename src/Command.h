@@ -2,6 +2,7 @@
 
 namespace C3
 {
+
 	struct Arg
 	{
 		enum Type
@@ -10,11 +11,7 @@ namespace C3
 			Bool,
 			Float,
 			String,
-			Form,
-			Actor,
-			ObjectRef,
-			Armor,
-			None
+			Object,
 		};
 
 		std::string Help() {
@@ -25,7 +22,8 @@ namespace C3
 		std::string help;
 		std::string defaultVal;
 		std::string alias;
-		Type type;		
+		Type type;
+		std::string rawType;
 		bool positional = false;
 		bool selected = false;
 		bool flag = false;
@@ -44,15 +42,15 @@ namespace C3
 			return msg;
 		}
 
-		Arg* GetFlag(std::string_view a_name) { return flags.count(a_name) ? &args[flags[a_name]] : nullptr; }
+		Arg* GetFlag(std::string a_name) { return flags.count(a_name) ? &args[flags[a_name]] : nullptr; }
 		
 		std::string name;
 		std::string func;
 		std::string help;
 		std::string alias;
 		std::vector<Arg> args;
-		std::unordered_map<std::string_view, int> flags;
-		std::unordered_map<std::string_view, int> all;
+		std::unordered_map<std::string, int> flags;
+		std::unordered_map<std::string, int> all;
 	};
 
 	struct Command
@@ -95,10 +93,10 @@ namespace YAML
 
 			rhs.positional = !rhs.name.starts_with("-");
 
-			auto type = node["type"].as<std::string>("");
-			rhs.type = magic_enum::enum_cast<C3::Arg::Type>(type, magic_enum::case_insensitive).value_or(C3::Arg::Type::None);
+			rhs.rawType = node["type"].as<std::string>("");
+			rhs.type = magic_enum::enum_cast<C3::Arg::Type>(rhs.rawType, magic_enum::case_insensitive).value_or(C3::Arg::Type::Object);
 
-			return !rhs.name.empty() && rhs.type != C3::Arg::Type::None;
+			return !rhs.name.empty();
 		}
 	};
 
@@ -123,6 +121,7 @@ namespace YAML
 						rhs.flags[arg.alias] = i;
 				}
 
+				logger::info("assigning {} to {}", arg.name, i);
 				rhs.all[arg.name] = i;
 			}
 
@@ -146,7 +145,6 @@ namespace YAML
 				rhs.subs[sub.name] = sub;
 				rhs.subs[sub.alias] = sub;
 			}
-
 
 			return !rhs.name.empty() && !rhs.script.empty();
 		}

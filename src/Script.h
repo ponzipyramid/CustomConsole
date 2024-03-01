@@ -15,7 +15,7 @@ namespace C3::Script
 		return policy->GetHandleForObject(a_form->GetFormType(), a_form);
 	}
 
-	inline ObjectPtr GetObject(RE::TESForm* a_form, const char* a_class, bool a_create = false)
+	inline ObjectPtr GetObjectPtr(RE::TESForm* a_form, const char* a_class, bool a_create = false)
 	{
 		auto vm = InternalVM::GetSingleton();
 		auto handle = GetHandle(a_form);

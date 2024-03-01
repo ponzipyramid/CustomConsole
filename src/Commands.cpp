@@ -98,6 +98,7 @@ bool Commands::Parse(const std::string& a_command, RE::TESObjectREFR* a_ref)
 						invalid += " ";
 					}
 				} else {
+					logger::info("adding {} to positional", token);
 					positional.push_back(token);	
 				}
 			}
@@ -107,13 +108,19 @@ bool Commands::Parse(const std::string& a_command, RE::TESObjectREFR* a_ref)
 				return true;
 			}
 
-			Util::ArgValues values;
+			std::vector<std::string> values;
 			values.resize(sub->args.size());
 
 			std::string missing;
 
+			logger::info("Keys: {}", sub->all.size());
+			for (auto& [key, _] : sub->all) {
+				logger::info("key: |{}|", key);
+			}
+
 			int pos = 0;
 			for (const auto& arg : sub->args) {
+				logger::info("{} index found |{}|", arg.name, sub->all.count(arg.name));
 				int index = sub->all[arg.name];
 
 				if (arg.positional) {
@@ -121,14 +128,15 @@ bool Commands::Parse(const std::string& a_command, RE::TESObjectREFR* a_ref)
 						missing += arg.name;
 						missing += " ";
 					} else {
-						values[index] = std::pair{ arg.type, positional[pos] };
+						logger::info("setting index {} to {}", index, positional[pos]);
+						values[index] = positional[pos];
 						pos++;
 					}
 				} else {
 					if (flags.count(arg.name)) {
-						values[index] = std::pair{ arg.type, flags[arg.name] };
+						values[index] = flags[arg.name];
 					} else if (!arg.required) {
-						values[index] = std::pair{ arg.type, Util::GetDefault(arg.type) };
+						values[index] = Util::GetDefault(arg.type);
 					} else {
 						missing += arg.name;
 						missing += " ";
@@ -139,9 +147,15 @@ bool Commands::Parse(const std::string& a_command, RE::TESObjectREFR* a_ref)
 			if (!missing.empty()) {
 				PrintErr(cmd, std::format("missing arguments {}", missing));
 				return true;
-			}
+			}		
+			
+			auto onResult = [](const RE::BSScript::Variable& a_var) {
+				logger::info("received callback value = {}", a_var.GetString());
+				// TODO: check return type and format appropriately w/ user-supplied template if available
+				Print(std::string{a_var.GetString()});
+			};
 
-			Util::InvokeFuncWithArgs(cmd->script, sub->func, values);
+			Util::InvokeFuncWithArgs(cmd->script, sub->func, sub->args, values, onResult);
 
 		} else {
 			PrintErr(cmd, std::format("invalid subcommand {}", tokens[1]));
