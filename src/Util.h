@@ -127,7 +127,8 @@ namespace C3::Util
 			assert(args.size() == values.size());
 
 			_variables.reserve((RE::BSTArrayBase::size_type) values.size());
-			_typeOverrides.reserve((RE::BSTArrayBase::size_type)values.size());
+			_typeOverrides.reserve(values.size());
+			_overriden.reserve(values.size());
 
 			for (RE::BSTArrayBase::size_type i = 0; i < args.size(); i++) {
 				const auto& arg = args[i];
@@ -137,6 +138,7 @@ namespace C3::Util
 
 				std::optional<RE::BSScript::Variable> scriptVariable;
 
+
 				if (val == "none") {
 					scriptVariable.emplace();
 					scriptVariable->SetNone();
@@ -145,6 +147,7 @@ namespace C3::Util
 					case Arg::Type::Object:
 						{
 							const auto& objType = arg.rawType;
+							const auto& normalised = Lowercase(objType);
 
 							RE::TESForm* form = nullptr;
 							if (objType == "actor" && val == "player") {
@@ -166,23 +169,24 @@ namespace C3::Util
 								break;
 
 							
+							// why god why?
 							if (object) {
 								auto newType = object->type;
 								auto type = object->GetTypeInfo();
 
-								if (Lowercase(type->GetName()) != Lowercase(objType)) {
-									auto parent = type->GetParent();
-									if (parent && Lowercase(parent->GetName()) == Lowercase(objType)) {
-										// why god why?
-										
-										_typeOverrides.emplace_back(object->type);
-										_overriden.push_back(object);
+								while (type && Lowercase(type->GetName()) != normalised) {
+									type = type->GetParent();
+								}
 
-										RE::BSTSmartPointer ptr{ parent };
-										
-										object->type = ptr;
-										logger::info("swapping type to {}", object->type->GetName());
-									}
+								if (type && type != object->type.get() && Lowercase(type->GetName()) == normalised) {
+
+									_typeOverrides.emplace_back(object->type);
+									_overriden.push_back(object);
+
+									RE::BSTSmartPointer ptr{ type };
+
+									object->type = ptr;
+									logger::info("swapping type to {}", object->type->GetName());
 								}
 							}
 
