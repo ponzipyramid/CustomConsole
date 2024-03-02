@@ -17,7 +17,6 @@ void Commands::Load()
 
 		auto path = entry.path();
 		
-		logger::info("parsing {}", path.string());
 		
 		if (path.extension() == ".yaml" || path.extension() == ".yaml") {
 			try {
@@ -37,7 +36,6 @@ void Commands::Load()
 				else
 					_commands[command.alias] = command;
 
-				logger::info("registered command {}", command.name);
 
 			} catch (std::exception& e) {
 				logger::error("failed to create command from file: {} due to {}", path.string(), e.what());
@@ -51,17 +49,12 @@ void Commands::Load()
 
 bool Commands::Parse(const std::string& a_command, RE::TESObjectREFR* a_ref)
 {
-	auto formId = a_ref ? a_ref->GetFormID() : 0;
-
-	logger::info("command registered = {}, target = {}", a_command, formId);
-
 	std::istringstream iss(a_command);
 	std::vector<std::string> tokens;
 	std::string split;
 
 	while (iss >> std::quoted(split)) {
 		tokens.push_back(split);
-		logger::info("token: {}", split);
 	}
 
 	if (auto cmd = GetCmd(tokens[0])) {
@@ -81,6 +74,15 @@ bool Commands::Parse(const std::string& a_command, RE::TESObjectREFR* a_ref)
 			std::string unrecognized;
 			std::string invalid;
 
+			if (auto selected = sub->GetSelected()) {
+				if (a_ref) {
+					auto edid = a_ref->GetFormID() == 20 ? "player" : Util::GetEditorID(a_ref);
+					if (!edid.empty()) {
+						flags[selected->name] = edid;
+					}
+				}
+			}
+
 			// TODO: add support for --flag=value pattern
 			// TODO: add support for arrays
 			for (int i = 2; i < tokens.size(); i++) {
@@ -88,25 +90,19 @@ bool Commands::Parse(const std::string& a_command, RE::TESObjectREFR* a_ref)
 
 				if (token.starts_with("-")) {
 					if (auto arg = sub->GetFlag(token)) {
-						logger::info("{} is a flag argument {}", arg->name, arg->flag);
 						if (arg->flag) {
-							logger::info("treating {} as flag setting to true", arg->name);
 							flags[arg->name] = "true";
 						} else if ((i + 1) < tokens.size() && !tokens[i + 1].starts_with("--") && !tokens[i + 1].starts_with("-")) {
-							logger::info("treating {} as flag value - setting to {}", arg->name, tokens[i + 1]);
 							flags[arg->name] = tokens[i + 1];
 						} else {
-							logger::info("treating {} as flag value did not have value but expected one", token);
 							invalid += arg->name;
 							invalid += " ";
 						}
 					} else {
-						logger::info("{} is an unrecognized flag", token);
 						unrecognized += token;
 						unrecognized += " ";
 					}
 				} else {
-					logger::info("adding {} to positional", token);
 					positional.push_back(token);	
 				}
 			}
@@ -137,19 +133,15 @@ bool Commands::Parse(const std::string& a_command, RE::TESObjectREFR* a_ref)
 						missing += arg.name;
 						missing += " ";
 					} else {
-						logger::info("setting index {} to {}", index, positional[pos]);
 						values[index] = positional[pos];
 						pos++;
 					}
 				} else {
 					if (flags.count(arg.name)) {
-						logger::info("found {} value in map", arg.name);
 						values[index] = flags[arg.name];
 					} else if (!arg.required) {
-						logger::info("using {} default value", arg.name);
 						values[index] = Util::GetDefault(arg.type);
 					} else {
-						logger::info("{} is required with no value provided", arg.name);
 						missing += arg.name;
 						missing += " ";
 					}

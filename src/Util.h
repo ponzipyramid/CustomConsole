@@ -5,6 +5,8 @@
 
 namespace C3::Util
 {
+	using _GetFormEditorID = const char* (*)(std::uint32_t);
+	
 	inline std::string GetDefault(Arg::Type a_type)
 	{
 		switch (a_type) {
@@ -20,6 +22,16 @@ namespace C3::Util
 		default: 
 			return "none";
 		}
+	}
+
+	inline std::string GetEditorID(RE::TESForm* a_form)
+	{
+		static auto tweaks = GetModuleHandle(L"po3_Tweaks");
+		static auto func = reinterpret_cast<_GetFormEditorID>(GetProcAddress(tweaks, "GetFormEditorID"));
+		if (func) {
+			return func(a_form->formID);
+		}
+		return {};
 	}
 
 	inline bool IsEditorID(const std::string_view identifier) { return std::strchr(identifier.data(), '|') == nullptr; }
@@ -117,13 +129,19 @@ namespace C3::Util
 								form = StringToForm(val);
 							}
 
+							logger::info("Found form {}", form != nullptr);
+
 							if (!form)
 								break;
 
 							auto ptr = Script::GetObjectPtr(form, objType.c_str());
 
+							logger::info("Found ptr {}", ptr != nullptr);
+							
 							if (!ptr)
 								break;
+
+
 
 							scriptVariable.emplace();
 							scriptVariable->SetObject(std::move(ptr));

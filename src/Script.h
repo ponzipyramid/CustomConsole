@@ -14,17 +14,37 @@ namespace C3::Script
 		auto policy = vm->GetObjectHandlePolicy();
 		return policy->GetHandleForObject(a_form->GetFormType(), a_form);
 	}
+	
+	inline std::string Lowercase(const char* a_str) {
+		std::string data{ a_str };
 
-	inline ObjectPtr GetObjectPtr(RE::TESForm* a_form, const char* a_class, bool a_create = false)
+		std::transform(data.begin(), data.end(), data.begin(),
+			[](unsigned char c) { return (char) std::tolower(c); });
+
+		return data;
+	}
+
+	inline ObjectPtr GetObjectPtr(RE::TESForm* a_form, const char* a_class)
 	{
 		auto vm = InternalVM::GetSingleton();
 		auto handle = GetHandle(a_form);
 
 		ObjectPtr object = nullptr;
-		bool found = vm->FindBoundObject(handle, a_class, object);
-		if (!found && a_create) {
-			vm->CreateObject2(a_class, object);
-			vm->BindObject(object, handle, false);
+		vm->FindBoundObject(handle, a_class, object);
+
+		if (object) {
+			auto newType = object->type;
+			auto type = object->GetTypeInfo();
+			
+			if (Lowercase(type->GetName()) != Lowercase(a_class)) {
+				auto parent = type->parentTypeInfo;
+
+				if (parent && Lowercase(parent->GetName()) == Lowercase(a_class)) {
+					object->type = parent;
+					logger::info("swapping type to {}", object->type->GetName());
+				}
+			}
+			
 		}
 
 		return object;
