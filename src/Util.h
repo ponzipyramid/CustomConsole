@@ -24,6 +24,26 @@ namespace C3::Util
 		}
 	}
 
+	inline std::string Lowercase(const char* a_str)
+	{
+		std::string data{ a_str };
+
+		std::transform(data.begin(), data.end(), data.begin(),
+			[](unsigned char c) { return (char)std::tolower(c); });
+
+		return data;
+	}
+
+	inline std::string Lowercase(std::string_view a_str)
+	{
+		std::string data{ a_str };
+
+		std::transform(data.begin(), data.end(), data.begin(),
+			[](unsigned char c) { return (char)std::tolower(c); });
+
+		return data;
+	}
+
 	inline std::string GetEditorID(RE::TESForm* a_form)
 	{
 		static auto tweaks = GetModuleHandle(L"po3_Tweaks");
@@ -94,6 +114,8 @@ namespace C3::Util
 	private:
 		RE::BSScrapArray<RE::BSScript::Variable> _variables;
 
+		std::vector<Script::TypePtr> _typeOverrides;
+		std::vector<Script::ObjectPtr> _overriden;
 	public:
 		FunctionArguments() noexcept = default;
 		FunctionArguments(std::size_t capacity)
@@ -105,7 +127,9 @@ namespace C3::Util
 			assert(args.size() == values.size());
 
 			_variables.reserve((RE::BSTArrayBase::size_type) values.size());
-			for (size_t i = 0; i < args.size(); i++) {
+			_typeOverrides.reserve((RE::BSTArrayBase::size_type)values.size());
+
+			for (RE::BSTArrayBase::size_type i = 0; i < args.size(); i++) {
 				const auto& arg = args[i];
 				const auto& val = values[i];
 
@@ -134,17 +158,36 @@ namespace C3::Util
 							if (!form)
 								break;
 
-							auto ptr = Script::GetObjectPtr(form, objType.c_str());
+							auto object = Script::GetObjectPtr(form, objType.c_str());
 
-							logger::info("Found ptr {}", ptr != nullptr);
+							logger::info("Found ptr {}", object != nullptr);
 							
-							if (!ptr)
+							if (!object)
 								break;
 
+							
+							if (object) {
+								auto newType = object->type;
+								auto type = object->GetTypeInfo();
 
+								if (Lowercase(type->GetName()) != Lowercase(objType)) {
+									auto parent = type->GetParent();
+									if (parent && Lowercase(parent->GetName()) == Lowercase(objType)) {
+										// why god why?
+										
+										_typeOverrides.emplace_back(object->type);
+										_overriden.push_back(object);
+
+										RE::BSTSmartPointer ptr{ parent };
+										
+										object->type = ptr;
+										logger::info("swapping type to {}", object->type->GetName());
+									}
+								}
+							}
 
 							scriptVariable.emplace();
-							scriptVariable->SetObject(std::move(ptr));
+							scriptVariable->SetObject(std::move(object));
 
 							break;
 						}
@@ -186,17 +229,23 @@ namespace C3::Util
 		}
 		~FunctionArguments() noexcept = default;
 
-	public:
 		void PushVariable(RE::BSScript::Variable variable)
 		{
 			_variables.emplace_back(std::move(variable));
 		}
 
-	public:
 		bool operator()(RE::BSScrapArray<RE::BSScript::Variable>& destination) const override
 		{
 			destination = _variables;
 			return true;
+		}
+
+		void ClearOverrides() {
+			for (auto i = 0; i < _overriden.size(); i++) {
+				_overriden[i]->type = _typeOverrides[i];
+				_overriden[i].reset();
+				_typeOverrides[i].reset();
+			}
 		}
 	};
 
@@ -215,7 +264,10 @@ namespace C3::Util
 		bool result = false;
 		if (auto vm = RE::BSScript::Internal::VirtualMachine::GetSingleton()) {
 			result = vm->DispatchStaticCall(a_scr, a_func, args, callback);
-		} 
+		}
+
+		// this is genuinely the worst fucking thing i have ever done 
+		args->ClearOverrides();
 
 		return result;
 	}

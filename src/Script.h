@@ -6,6 +6,7 @@ namespace C3::Script
 	using ObjectPtr = RE::BSTSmartPointer<RE::BSScript::Object>;
 	using ArrayPtr = RE::BSTSmartPointer<RE::BSScript::Array>;
 	using CallbackPtr = RE::BSTSmartPointer<RE::BSScript::IStackCallbackFunctor>;
+	using TypePtr = RE::BSTSmartPointer<RE::BSScript::ObjectTypeInfo>;
 	using Args = RE::BSScript::IFunctionArguments;
 
 	inline RE::VMHandle GetHandle(RE::TESForm* a_form)
@@ -15,14 +16,6 @@ namespace C3::Script
 		return policy->GetHandleForObject(a_form->GetFormType(), a_form);
 	}
 	
-	inline std::string Lowercase(const char* a_str) {
-		std::string data{ a_str };
-
-		std::transform(data.begin(), data.end(), data.begin(),
-			[](unsigned char c) { return (char) std::tolower(c); });
-
-		return data;
-	}
 
 	inline ObjectPtr GetObjectPtr(RE::TESForm* a_form, const char* a_class)
 	{
@@ -30,22 +23,8 @@ namespace C3::Script
 		auto handle = GetHandle(a_form);
 
 		ObjectPtr object = nullptr;
+		
 		vm->FindBoundObject(handle, a_class, object);
-
-		if (object) {
-			auto newType = object->type;
-			auto type = object->GetTypeInfo();
-			
-			if (Lowercase(type->GetName()) != Lowercase(a_class)) {
-				auto parent = type->parentTypeInfo;
-
-				if (parent && Lowercase(parent->GetName()) == Lowercase(a_class)) {
-					object->type = parent;
-					logger::info("swapping type to {}", object->type->GetName());
-				}
-			}
-			
-		}
 
 		return object;
 	}
