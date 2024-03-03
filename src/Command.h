@@ -2,7 +2,6 @@
 
 namespace C3
 {
-
 	struct Arg
 	{
 		enum Type
@@ -16,7 +15,18 @@ namespace C3
 
 		inline std::string Help()
 		{
-			return help;
+			std::string msg{ "   " + name + " (" + rawType + ")" };
+			if (selected) {
+				msg += " (selectable)";
+			}
+			if (required) {
+				msg += " (required)";
+			}
+
+			if (!help.empty())
+				msg += ": " + help;
+			msg += "\n";
+			return msg;
 		}
 
 		std::string name;
@@ -35,10 +45,17 @@ namespace C3
 	{
 		std::string Help()
 		{
-			std::string msg{ help };
+			std::string spacing(3, ' ');
+			std::string msg{ spacing + name };
+			
+			if (!help.empty())
+				msg += ": " + help;
+			msg += "\n";
+
 			for (auto& arg : args) {
+				msg += spacing;
+				msg += "   ";
 				msg += arg.Help();
-				msg += "\n";
 			}
 			return msg;
 		}
@@ -67,21 +84,21 @@ namespace C3
 	{
 		inline std::string Help() 
 		{
-			return help;
+			std::string msg{ name + ": " + help + "\n" };
+			for (auto& sub : subs) {
+				msg += sub.Help();
+			}
+			return msg;
 		}
 
-		inline std::string Help(SubCommand* a_sub)
-		{
-			return Help() + "\n" + a_sub->Help();
-		}
-
-		SubCommand* GetSub(std::string a_name) { return subs.count(a_name) ? &subs[a_name] : nullptr; } 
+		SubCommand* GetSub(std::string a_name) { return map.count(a_name) ? &map[a_name] : nullptr; } 
 
 		std::string name;
 		std::string help;
 		std::string alias;
 		std::string script;
-		std::unordered_map<std::string, SubCommand> subs;
+		std::vector<SubCommand> subs;
+		std::unordered_map<std::string, SubCommand> map;
 	};
 }
 
@@ -150,10 +167,10 @@ namespace YAML
 			rhs.script = node["script"].as<std::string>("");
 
 			// TODO: sub name/alias collision checks
-			auto subs = node["subs"].as<std::vector<C3::SubCommand>>(std::vector<C3::SubCommand>{});
-			for (auto& sub : subs) {
-				rhs.subs[sub.name] = sub;
-				rhs.subs[sub.alias] = sub;
+			rhs.subs = node["subs"].as<std::vector<C3::SubCommand>>(std::vector<C3::SubCommand>{});
+			for (auto& sub : rhs.subs) {
+				rhs.map[sub.name] = sub;
+				rhs.map[sub.alias] = sub;
 			}
 
 			return !rhs.name.empty() && !rhs.script.empty();

@@ -62,7 +62,12 @@ bool Commands::Parse(const std::string& a_command, RE::TESObjectREFR* a_ref)
 		logger::info("command {} recognized", cmd->name);
 		
 		if (tokens.size() == 1) {
-			PrintErr("subcommand required");
+			Print(cmd->Help());
+			return true;
+		} 
+
+		if (tokens[1] == "-h" || tokens[1] == "--help") {
+			Print(cmd->Help());
 			return true;
 		}
 
@@ -86,10 +91,17 @@ bool Commands::Parse(const std::string& a_command, RE::TESObjectREFR* a_ref)
 				}
 			}
 
+			bool help = false;
+
 			// TODO: add support for --flag=value pattern
 			// TODO: add support for arrays
 			for (int i = 2; i < tokens.size(); i++) {
 				const auto token = tokens[i];
+
+				if (token == "-h" || token == "--help") {
+					help = true;
+					break;
+				}
 
 				if (token.starts_with("-")) {
 					if (auto arg = sub->GetFlag(token)) {
@@ -111,6 +123,11 @@ bool Commands::Parse(const std::string& a_command, RE::TESObjectREFR* a_ref)
 					logger::info("adding {} to positional", token);
 					positional.push_back(token);	
 				}
+			}
+
+			if (help) {
+				Print(cmd->Help());
+				return true;
 			}
 
 			if (!unrecognized.empty()) {
@@ -196,6 +213,7 @@ bool Commands::Parse(const std::string& a_command, RE::TESObjectREFR* a_ref)
 					queue->AddMessage(RE::Console::MENU_NAME, RE::UI_MESSAGE_TYPE::kHide, nullptr);
 				}
 			}
+
 
 			Util::InvokeFuncWithArgs(cmd->script, sub->func, sub->args, values, onResult);
 
