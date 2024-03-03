@@ -78,7 +78,10 @@ bool Commands::Parse(const std::string& a_command, RE::TESObjectREFR* a_ref)
 				if (a_ref) {
 					auto edid = a_ref->GetFormID() == 20 ? "player" : Util::GetEditorID(a_ref);
 					if (!edid.empty()) {
-						flags[selected->name] = edid;
+						if (selected->positional)
+							positional.emplace_back(edid);
+						else
+							flags[selected->name] = edid;
 					}
 				}
 			}
@@ -94,6 +97,8 @@ bool Commands::Parse(const std::string& a_command, RE::TESObjectREFR* a_ref)
 							flags[arg->name] = "true";
 						} else if ((i + 1) < tokens.size() && !tokens[i + 1].starts_with("--") && !tokens[i + 1].starts_with("-")) {
 							flags[arg->name] = tokens[i + 1];
+							logger::info("adding {} to flags", tokens[i + 1]);
+							i++;
 						} else {
 							invalid += arg->name;
 							invalid += " ";
@@ -103,6 +108,7 @@ bool Commands::Parse(const std::string& a_command, RE::TESObjectREFR* a_ref)
 						unrecognized += " ";
 					}
 				} else {
+					logger::info("adding {} to positional", token);
 					positional.push_back(token);	
 				}
 			}
@@ -128,23 +134,20 @@ bool Commands::Parse(const std::string& a_command, RE::TESObjectREFR* a_ref)
 			for (const auto& arg : sub->args) {
 				int index = sub->all[arg.name];
 
-				if (arg.positional) {
-					if (pos == positional.size()) {
-						missing += arg.name;
-						missing += " ";
-					} else {
-						values[index] = positional[pos];
-						pos++;
-					}
+				if (arg.positional && pos < positional.size()) {
+					values[index] = positional[pos];
+					logger::info("setting {} to {}", index, positional[pos]);
+					pos++;
+				} else if (!arg.positional && flags.count(arg.name)) {
+					logger::info("setting {} to {}", index, flags[arg.name]);
+					values[index] = flags[arg.name];
+				} else if (!arg.required) {
+					logger::info("setting {} to {}", index, Util::GetDefault(arg));
+					values[index] = Util::GetDefault(arg);
 				} else {
-					if (flags.count(arg.name)) {
-						values[index] = flags[arg.name];
-					} else if (!arg.required) {
-						values[index] = Util::GetDefault(arg.type);
-					} else {
-						missing += arg.name;
-						missing += " ";
-					}
+					logger::info("{} is missing", index);
+					missing += arg.name;
+					missing += " ";
 				}
 			}
 
@@ -157,7 +160,6 @@ bool Commands::Parse(const std::string& a_command, RE::TESObjectREFR* a_ref)
 				using RawType = RE::BSScript::TypeInfo::RawType;
 				std::string ret;
 				
-				// TODO: handle arrays
 				switch (a_var.GetType().GetRawType())
 				{
 				case RawType::kNone:
@@ -166,8 +168,7 @@ bool Commands::Parse(const std::string& a_command, RE::TESObjectREFR* a_ref)
 				case RawType::kObject:
 					// TODO: implement
 					// maybe try to get the object, and then invoke GetFormID() on it?
-					ret = "form received";
-
+					ret = "completed";
 					break;
 				case RawType::kString:
 					ret = std::string{ a_var.GetString() };
@@ -181,10 +182,20 @@ bool Commands::Parse(const std::string& a_command, RE::TESObjectREFR* a_ref)
 				case RawType::kBool:
 					ret = Util::BoolToString(a_var.GetBool());
 					break;
+				default:
+					// TODO: handle arrays
+					ret = "completed";
+					break;
 				}
 				logger::info("received callback value = {}", ret);
 				Print(ret);
 			};
+
+			if (sub->close) {
+				if (const auto queue = RE::UIMessageQueue::GetSingleton()) {
+					queue->AddMessage(RE::Console::MENU_NAME, RE::UI_MESSAGE_TYPE::kHide, nullptr);
+				}
+			}
 
 			Util::InvokeFuncWithArgs(cmd->script, sub->func, sub->args, values, onResult);
 

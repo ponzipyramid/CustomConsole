@@ -60,6 +60,7 @@ namespace C3
 		std::vector<Arg> args;
 		std::unordered_map<std::string, int> flags;
 		std::unordered_map<std::string, int> all;
+		bool close;
 	};
 
 	struct Command
@@ -104,7 +105,7 @@ namespace YAML
 			rhs.rawType = node["type"].as<std::string>("");
 			rhs.type = magic_enum::enum_cast<C3::Arg::Type>(rhs.rawType, magic_enum::case_insensitive).value_or(C3::Arg::Type::Object);
 
-			return !rhs.name.empty() && (!rhs.selected || !rhs.positional);
+			return !rhs.name.empty();
 		}
 	};
 
@@ -117,6 +118,7 @@ namespace YAML
 			rhs.help = node["help"].as<std::string>("");
 			rhs.alias = node["alias"].as<std::string>("");
 			rhs.func = node["func"].as<std::string>("");
+			rhs.close = node["close"].as<std::string>("") == "true";
 			
 			// TODO: arg name/alias collision checks
 			rhs.args = node["args"].as<std::vector<C3::Arg>>(std::vector<C3::Arg>{});

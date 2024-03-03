@@ -7,9 +7,13 @@ namespace C3::Util
 {
 	using _GetFormEditorID = const char* (*)(std::uint32_t);
 	
-	inline std::string GetDefault(Arg::Type a_type)
+	inline std::string GetDefault(const Arg& a_arg)
 	{
-		switch (a_type) {
+
+		if (!a_arg.defaultVal.empty())
+			return a_arg.defaultVal;
+
+		switch (a_arg.type) {
 		case Arg::Type::Int:
 			return "0";
 		case Arg::Type::Bool:
@@ -55,15 +59,15 @@ namespace C3::Util
 	}
 
 	inline bool IsEditorID(const std::string_view identifier) { return std::strchr(identifier.data(), '|') == nullptr; }
+	
 	inline std::pair<RE::FormID, std::string> GetFormIDAndPluginName(const std::string_view a_str)
 	{
 		if (const auto tilde{ std::strchr(a_str.data(), '|') }) {
 			const auto tilde_pos{ static_cast<int>(tilde - a_str.data()) };
 			return { std::stoi(std::string{ a_str.substr(0, tilde_pos) }, 0, 16), a_str.substr(tilde_pos + 1).data() };
 		}
-		logger::error("ERROR: Failed to get FormID and plugin name for {}", a_str);
 
-		return { 0, "" };
+		return { std::stoi(std::string{ a_str }, 0, 16), "" };
 	}
 
 	inline std::string BoolToString(bool b)
@@ -77,7 +81,10 @@ namespace C3::Util
 			return RE::TESForm::LookupByEditorID(a_str);
 		} else {
 			const auto& [formId, modName] = GetFormIDAndPluginName(a_str);
-			return RE::TESDataHandler::GetSingleton()->LookupForm(formId, modName);
+			if (modName.empty())
+				return RE::TESForm::LookupByID(formId);
+			else
+				return RE::TESDataHandler::GetSingleton()->LookupForm(formId, modName);
 		}
 	}
 
