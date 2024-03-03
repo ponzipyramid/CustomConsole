@@ -155,13 +155,9 @@ bool Commands::Parse(const std::string& a_command, RE::TESObjectREFR* a_ref)
 			
 			auto onResult = [](const RE::BSScript::Variable& a_var) {
 				using RawType = RE::BSScript::TypeInfo::RawType;
-
-				logger::info("received callback value = {}", a_var.GetString());
-				// TODO: check return type and format appropriately w/ user-supplied template if available
-
 				std::string ret;
 				
-				// TODO: implement arrays
+				// TODO: handle arrays
 				switch (a_var.GetType().GetRawType())
 				{
 				case RawType::kNone:
@@ -169,6 +165,9 @@ bool Commands::Parse(const std::string& a_command, RE::TESObjectREFR* a_ref)
 					break;
 				case RawType::kObject:
 					// TODO: implement
+					// maybe try to get the object, and then invoke GetFormID() on it?
+					ret = "form received";
+
 					break;
 				case RawType::kString:
 					ret = std::string{ a_var.GetString() };
@@ -183,6 +182,7 @@ bool Commands::Parse(const std::string& a_command, RE::TESObjectREFR* a_ref)
 					ret = Util::BoolToString(a_var.GetBool());
 					break;
 				}
+				logger::info("received callback value = {}", ret);
 				Print(ret);
 			};
 
