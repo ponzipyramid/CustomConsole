@@ -1,6 +1,6 @@
 # Custom Console
 
-SKSE plugin that allows creation of new console commands using Papyrus.
+SKSE plugin that allows creation of new console commands using Papyrus. Documentation can be found in the [wiki](https://github.com/ponzipyramid/CustomConsole/wiki).
 
 ## Requirements
 
