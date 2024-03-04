@@ -84,7 +84,7 @@ namespace C3
 	{
 		inline std::string Help() 
 		{
-			std::string msg{ name + ": " + help + "\n" };
+			std::string msg{ name + " (" + alias + ") : " + help + "\n" };
 			for (auto& sub : subs) {
 				msg += sub.Help();
 			}

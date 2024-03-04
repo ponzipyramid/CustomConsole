@@ -165,15 +165,22 @@ namespace C3::Util
 
 							logger::info("Found form {}", form != nullptr);
 
-							if (!form)
+							if (!form) {
+								scriptVariable.emplace();
+								scriptVariable->SetNone();
 								break;
+							}
+							logger::info("Form is {} {}", form->GetFormID(), GetEditorID(form));
 
 							auto object = Script::GetObjectPtr(form, objType.c_str());
 
-							logger::info("Found ptr {}", object != nullptr);
-							
-							if (!object)
+							logger::info("Found {} ptr {}", objType.c_str(), object != nullptr);
+
+							if (!object) {
+								scriptVariable.emplace();
+								scriptVariable->SetNone();
 								break;
+							}
 
 							
 							// why god why?

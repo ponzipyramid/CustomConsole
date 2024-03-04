@@ -131,11 +131,11 @@ bool Commands::Parse(const std::string& a_command, RE::TESObjectREFR* a_ref)
 			}
 
 			if (!unrecognized.empty()) {
-				PrintErr(cmd, std::format("unrecognized flag arguments: {}", unrecognized));
+				PrintErr(std::format("unrecognized flag arguments: {}", unrecognized));
 			}
 
 			if (!invalid.empty()) {
-				PrintErr(cmd, std::format("invalid flag arguments - was expecting value: {}", invalid));
+				PrintErr(std::format("invalid flag arguments - was expecting value: {}", invalid));
 			}
 
 			if (!unrecognized.empty() || !invalid.empty()) {
@@ -169,7 +169,7 @@ bool Commands::Parse(const std::string& a_command, RE::TESObjectREFR* a_ref)
 			}
 
 			if (!missing.empty()) {
-				PrintErr(cmd, std::format("missing arguments {}", missing));
+				PrintErr(std::format("missing arguments {}", missing));
 				return true;
 			}		
 			
@@ -218,7 +218,7 @@ bool Commands::Parse(const std::string& a_command, RE::TESObjectREFR* a_ref)
 			Util::InvokeFuncWithArgs(cmd->script, sub->func, sub->args, values, onResult);
 
 		} else {
-			PrintErr(cmd, std::format("invalid subcommand {}", tokens[1]));
+			PrintErr(std::format("invalid subcommand {}", tokens[1]));
 			return true;
 		}
 
@@ -231,11 +231,32 @@ bool Commands::Parse(const std::string& a_command, RE::TESObjectREFR* a_ref)
 void Commands::Print(const std::string& a_str)
 {
 	std::string str{ stl::safe_string(a_str.c_str()) };
+	logger::info("trying to print {} {}", str, str.size());
 	auto task = SKSE::GetTaskInterface();
+	const int maxChars = 512;
+
+	str += "\n";
+
 	task->AddTask([=]() {
 		auto console = RE::ConsoleLog::GetSingleton();
+
 		if (console) {
-			console->Print(str.c_str());
+			std::size_t size = str.size();
+			std::size_t start = 0;
+			std::size_t lastSplit = 0;
+			
+			for (std::size_t i = 0; i < size; i++) {
+				if (str[i] == '\n' || (i == size - 1)) {
+					lastSplit = i;
+				}
+
+				if ((i - start) >= maxChars || (i == size - 1)) {
+					auto length = (lastSplit - start);
+
+					console->Print(str.substr(start, length).c_str());
+					start = lastSplit + 1;
+				}
+			}
 		}
 	});
 }
@@ -244,11 +265,4 @@ void Commands::PrintErr(std::string a_str)
 {
 	logger::error("{}", a_str);
 	Print(std::format("ERROR {}", a_str));
-}
-
-void Commands::PrintErr(Command* a_cmd, std::string a_str)
-{
-	logger::error("{}", a_str);
-	Print(std::format("ERROR {}", a_str));
-	Print(a_cmd->Help());
 }
