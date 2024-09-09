@@ -103,11 +103,11 @@ bool Commands::Parse(const std::string& a_command, RE::TESObjectREFR* a_ref)
 					break;
 				}
 
-				if (token.starts_with("-")) {
+				if (token.starts_with("-") && !Util::IsNumeric(token)) {
 					if (auto arg = sub->GetFlag(token)) {
 						if (arg->flag) {
 							flags[arg->name] = "true";
-						} else if ((i + 1) < tokens.size() && !tokens[i + 1].starts_with("--") && !tokens[i + 1].starts_with("-")) {
+						} else if ((i + 1) < tokens.size() && !tokens[i + 1].starts_with("--") && (!tokens[i + 1].starts_with("-")) || Util::IsNumeric(tokens[i + 1])) {
 							flags[arg->name] = tokens[i + 1];
 							logger::info("adding {} to flags", tokens[i + 1]);
 							i++;
@@ -121,7 +121,7 @@ bool Commands::Parse(const std::string& a_command, RE::TESObjectREFR* a_ref)
 					}
 				} else {
 					logger::info("adding {} to positional", token);
-					positional.push_back(token);	
+					positional.push_back(token);
 				}
 			}
 
@@ -135,7 +135,7 @@ bool Commands::Parse(const std::string& a_command, RE::TESObjectREFR* a_ref)
 			}
 
 			if (!invalid.empty()) {
-				PrintErr(std::format("invalid flag arguments - was expecting value: {}", invalid));
+				PrintErr(std::format("invalid flag arguments - was expecting value for: {}", invalid));
 			}
 
 			if (!unrecognized.empty() || !invalid.empty()) {
@@ -213,7 +213,6 @@ bool Commands::Parse(const std::string& a_command, RE::TESObjectREFR* a_ref)
 					queue->AddMessage(RE::Console::MENU_NAME, RE::UI_MESSAGE_TYPE::kHide, nullptr);
 				}
 			}
-
 
 			Util::InvokeFuncWithArgs(cmd->script, sub->func, sub->args, values, onResult);
 

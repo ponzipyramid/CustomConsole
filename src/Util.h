@@ -9,7 +9,6 @@ namespace C3::Util
 	
 	inline std::string GetDefault(const Arg& a_arg)
 	{
-
 		if (!a_arg.defaultVal.empty())
 			return a_arg.defaultVal;
 
@@ -26,6 +25,12 @@ namespace C3::Util
 		default: 
 			return "none";
 		}
+	}
+
+	inline bool IsNumeric(std::string a_str)
+	{
+		static const std::regex pattern(R"(^[+-]?(?:\d+|\d*\.\d+)$)");
+		return std::regex_match(a_str, pattern);
 	}
 
 	inline std::string Lowercase(const char* a_str)
@@ -67,7 +72,7 @@ namespace C3::Util
 			return { std::stoi(std::string{ a_str.substr(0, tilde_pos) }, 0, 16), a_str.substr(tilde_pos + 1).data() };
 		}
 
-		return { std::stoi(std::string{ a_str }, 0, 16), "" };
+		return { 0, "" };
 	}
 
 	inline std::string BoolToString(bool b)
@@ -77,15 +82,12 @@ namespace C3::Util
 
 	inline RE::TESForm* StringToForm(std::string_view a_str)
 	{
-		if (IsEditorID(a_str)) {
-			return RE::TESForm::LookupByEditorID(a_str);
-		} else {
-			const auto& [formId, modName] = GetFormIDAndPluginName(a_str);
-			if (modName.empty())
-				return RE::TESForm::LookupByID(formId);
-			else
-				return RE::TESDataHandler::GetSingleton()->LookupForm(formId, modName);
+		if (const auto form = RE::TESForm::LookupByEditorID(a_str)) {
+			return form;
 		}
+
+		const auto& [formId, modName] = GetFormIDAndPluginName(a_str);
+		return RE::TESDataHandler::GetSingleton()->LookupForm(formId, modName);
 	}
 
 	class VmCallback : public RE::BSScript::IStackCallbackFunctor
@@ -141,7 +143,7 @@ namespace C3::Util
 				const auto& arg = args[i];
 				const auto& val = values[i];
 
-				logger::info("Argument: {} {}", (int) arg.type, val);
+				logger::info("Argument {}: {}", (int) arg.type, val);
 
 				std::optional<RE::BSScript::Variable> scriptVariable;
 
