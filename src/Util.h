@@ -131,7 +131,7 @@ namespace C3::Util
 		{
 			_variables.reserve((RE::BSTArrayBase::size_type) capacity);
 		}
-		FunctionArguments(const std::vector<Arg>& args, const std::vector<std::string>& values)
+		FunctionArguments(const std::vector<Arg>& args, const std::vector<std::string>& values, RE::TESObjectREFR* a_target)
 		{
 			assert(args.size() == values.size());
 
@@ -159,13 +159,18 @@ namespace C3::Util
 							const auto& normalised = Lowercase(objType);
 
 							RE::TESForm* form = nullptr;
-							if (objType == "actor" && val == "player") {
-								form = RE::PlayerCharacter::GetSingleton();
+
+							if (arg.selected) {
+								form = a_target;
 							} else {
-								form = StringToForm(val);
+								if (objType == "actor" && val == "player") {
+									form = RE::PlayerCharacter::GetSingleton();
+								} else {
+									form = StringToForm(val);
+								}
 							}
 
-							logger::info("Found form {}", form != nullptr);
+							logger::info("Found form {} - {}", form != nullptr, objType);
 
 							if (!form) {
 								scriptVariable.emplace();
@@ -176,7 +181,13 @@ namespace C3::Util
 
 							auto object = Script::GetObjectPtr(form, objType.c_str());
 
-							logger::info("Found {} ptr {}", objType.c_str(), object != nullptr);
+							logger::info("Found {} ptr {}", objType, object != nullptr);
+							
+							if (!object) {
+								object = Script::GetObjectPtr(form, "form");
+								logger::info("Found {} ptr {}", objType, object != nullptr);
+							}
+
 
 							if (!object) {
 								scriptVariable.emplace();
@@ -184,7 +195,6 @@ namespace C3::Util
 								break;
 							}
 
-							
 							// why god why?
 							if (object) {
 								auto newType = object->type;
@@ -269,13 +279,13 @@ namespace C3::Util
 		}
 	};
 
-	inline bool InvokeFuncWithArgs(std::string a_scr, std::string a_func, std::vector<Arg>& a_args, std::vector<std::string>& a_vals, std::function<void(const RE::BSScript::Variable& a_var)> a_onResult)
+	inline bool InvokeFuncWithArgs(std::string a_scr, std::string a_func, std::vector<Arg>& a_args, std::vector<std::string>& a_vals, RE::TESObjectREFR* a_target, std::function<void(const RE::BSScript::Variable& a_var)> a_onResult)
 	{
 		logger::info("invoking {} in {} with {} arguments", a_func, a_scr, a_vals.size());
 
 
 		//std::vector<std::string> forced{ "player", "none" };
-		auto args = new FunctionArguments(a_args, a_vals);
+		auto args = new FunctionArguments(a_args, a_vals, a_target);
 
 		RE::BSTSmartPointer<RE::BSScript::IStackCallbackFunctor> callback;
 		callback.reset(new VmCallback(a_onResult));

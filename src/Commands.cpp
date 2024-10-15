@@ -17,7 +17,6 @@ void Commands::Load()
 
 		auto path = entry.path();
 		
-		
 		if (path.extension() == ".yaml" || path.extension() == ".yaml") {
 			try {
 				YAML::Node node = YAML::LoadFile(path.string());
@@ -81,13 +80,10 @@ bool Commands::Parse(const std::string& a_command, RE::TESObjectREFR* a_ref)
 
 			if (auto selected = sub->GetSelected()) {
 				if (a_ref) {
-					auto edid = a_ref->GetFormID() == 20 ? "player" : Util::GetEditorID(a_ref);
-					if (!edid.empty()) {
-						if (selected->positional)
-							positional.emplace_back(edid);
-						else
-							flags[selected->name] = edid;
-					}
+					if (selected->positional)
+						positional.emplace_back("selected");
+					else
+						flags[selected->name] = "selected";
 				}
 			}
 
@@ -161,6 +157,7 @@ bool Commands::Parse(const std::string& a_command, RE::TESObjectREFR* a_ref)
 				} else if (!arg.required) {
 					logger::info("setting {} to {}", index, Util::GetDefault(arg));
 					values[index] = Util::GetDefault(arg);
+					values[index] = Util::GetDefault(arg);
 				} else {
 					logger::info("{} is missing", index);
 					missing += arg.name;
@@ -214,7 +211,7 @@ bool Commands::Parse(const std::string& a_command, RE::TESObjectREFR* a_ref)
 				}
 			}
 
-			Util::InvokeFuncWithArgs(cmd->script, sub->func, sub->args, values, onResult);
+			Util::InvokeFuncWithArgs(cmd->script, sub->func, sub->args, values, a_ref, onResult);
 
 		} else {
 			PrintErr(std::format("invalid subcommand {}", tokens[1]));
